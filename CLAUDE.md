@@ -6,7 +6,7 @@ shortcode exists (BT Portal 0.60.0+, same pattern as the Quote tab and BT Quote)
 
 - Site: boomerts.com (AWS Lightsail Bitnami WordPress, NOT IONOS; Boomer T's is a separate company
   from Duck and Rabbit Co.)
-- Current version: **0.1.0**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
+- Current version: **0.1.1**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
 - Repo: `strummer95/bt-halftoner` (must stay **public**: the updater reads `manifest.json` through
   `api.github.com` without a token).
 
@@ -54,6 +54,14 @@ with `edit_posts` (`bth_user_can_use()`).
   cell is 6.7px and dots come out as blocky crosses. The pHYs chunk is written so RIPs size it right.
 - BT Portal's `btSwitchTab()` calls `window.bthShow()` to redraw, since a canvas fitted while its pane
   was hidden is 0 wide. Keep that name; the portal depends on it.
+- **Magnifier (0.1.1).** At Fit the averaged preview makes a halftone look like the original, and
+  Dillon reported "it didn't do anything" on a gradient. Hovering either stage shows a loupe on both
+  sides at the same print spot: halftoned at 1 file px per screen px, original covering the same area.
+  `paint()` keeps the full-res composite on `canvas._full` for it. Stage background is a checkerboard
+  so empty space is not read as white ink.
+- **Illustrator gradients to 0% opacity** also interpolate colour toward the 0% stop's colour (white
+  by default), so the faint end is light grey ink. That is in the file, not a bug here; the fix is
+  the stop colour in Illustrator.
 - Only transparency is dotted. An image with no alpha (JPG) is left solid and the status line says so.
 
 ## Working notes

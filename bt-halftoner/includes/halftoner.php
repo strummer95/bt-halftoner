@@ -74,7 +74,8 @@ function bth_shortcode() {
 #bth-halftoner .ht-panes{display:flex;gap:10px}
 #bth-halftoner .ht-pane{flex:1;min-width:0}
 #bth-halftoner .ht-pane h3{margin:0 0 4px;font-family:Oswald,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--ht-navy);font-weight:500}
-#bth-halftoner .ht-stage{height:calc(100vh - 290px);min-height:320px;overflow:auto;border:1px solid var(--ht-line);border-radius:8px;background:#fff}
+#bth-halftoner .ht-stage{position:relative;height:calc(100vh - 290px);min-height:320px;overflow:auto;border:1px solid var(--ht-line);border-radius:8px;background:repeating-conic-gradient(#e4e6ee 0 25%,#eef0f5 0 50%) 0 0/16px 16px}
+#bth-halftoner .ht-loupe{position:absolute;width:240px;height:240px;border-radius:50%;border:3px solid var(--ht-pink);box-shadow:0 4px 16px rgba(0,0,0,.35);pointer-events:none;display:none;z-index:5}
 #bth-halftoner .ht-stage canvas{display:block}
 @media (max-width:900px){#bth-halftoner{flex-direction:column}#bth-halftoner .ht-side{width:100%}#bth-halftoner .ht-panes{flex-direction:column}#bth-halftoner .ht-stage{height:60vh}}
 </style>
@@ -114,6 +115,7 @@ function bth_shortcode() {
 
   <label>Zoom</label>
   <select id="bth-zoom"><option value="fit">Fit</option><option value="1">100%</option><option value="2">200%</option><option value="4">400%</option></select>
+  <div class="ht-hint">Hover either preview to see the real dots up close. At Fit the dots blend together, the way they do from across the room.</div>
 
   <div class="ht-btns">
     <button class="ht-pri" id="bth-dl" disabled>Download PNG</button>
@@ -127,8 +129,8 @@ function bth_shortcode() {
   <div class="ht-files" id="bth-files"></div>
   <div class="ht-status" id="bth-status"></div>
   <div class="ht-panes">
-    <div class="ht-pane"><h3 id="bth-lefth">Original</h3><div class="ht-stage" id="bth-s1"><canvas id="bth-cin"></canvas></div></div>
-    <div class="ht-pane"><h3>Halftoned</h3><div class="ht-stage" id="bth-s2"><canvas id="bth-cout"></canvas></div></div>
+    <div class="ht-pane"><h3 id="bth-lefth">Original</h3><div class="ht-stage" id="bth-s1"><canvas id="bth-cin"></canvas><canvas class="ht-loupe" id="bth-l1"></canvas></div></div>
+    <div class="ht-pane"><h3>Halftoned</h3><div class="ht-stage" id="bth-s2"><canvas id="bth-cout"></canvas><canvas class="ht-loupe" id="bth-l2"></canvas></div></div>
   </div>
 </div>
 
@@ -407,7 +409,40 @@ function bth_shortcode() {
       canvas.style.imageRendering = 'auto';
     }
     canvas.style.width = dw + 'px'; canvas.style.height = dh + 'px';
+    canvas._full = full; // full resolution, for the magnifier
   }
+
+  /* ---------- magnifier: same spot on both sides, real pixels ---------- */
+  // The halftoned side is shown at 1 file pixel per screen pixel (at 2x output
+  // that is the print at 600 DPI), and the original side covers the same patch
+  // of the print, so the two loupes always line up.
+  function loupe(e) {
+    if (cur < 0 || !items[cur].out) return;
+    var c = e.currentTarget.querySelector('canvas:not(.ht-loupe)'), r = c.getBoundingClientRect();
+    var fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+    if (fx < 0 || fy < 0 || fx > 1 || fy > 1) { hideLoupe(); return; }
+    var dpr = window.devicePixelRatio || 1, L = 240;
+    [['cin', 'l1', 's1'], ['cout', 'l2', 's2']].forEach(function (p) {
+      var src = el(p[0]), lc = el(p[1]), st = el(p[2]), full = src._full;
+      if (!full) return;
+      var outFull = el('cout')._full, k = full.width / outFull.width; // in-pane px per out px
+      var span = L * k; // file pixels covered by the loupe on this side
+      lc.width = L * dpr; lc.height = L * dpr;
+      var g = lc.getContext('2d');
+      g.imageSmoothingEnabled = k < 1; // stretch the original smoothly, show dots crisp
+      g.fillStyle = el('shirt').value; g.fillRect(0, 0, lc.width, lc.height);
+      g.drawImage(full, fx * full.width - span / 2, fy * full.height - span / 2, span, span, 0, 0, lc.width, lc.height);
+      var sr = src.getBoundingClientRect(), str = st.getBoundingClientRect();
+      lc.style.left = (sr.left - str.left + st.scrollLeft + fx * sr.width - L / 2) + 'px';
+      lc.style.top = (sr.top - str.top + st.scrollTop + fy * sr.height - L / 2) + 'px';
+      lc.style.display = 'block';
+    });
+  }
+  function hideLoupe() { el('l1').style.display = el('l2').style.display = 'none'; }
+  ['s1', 's2'].forEach(function (id) {
+    el(id).addEventListener('mousemove', function (e) { if (el('zoom').value === 'fit') loupe(e); else hideLoupe(); });
+    el(id).addEventListener('mouseleave', hideLoupe);
+  });
   function paintBoth() {
     if (cur < 0) return;
     var it = items[cur];
