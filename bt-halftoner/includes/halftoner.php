@@ -91,14 +91,14 @@ function bth_shortcode() {
   <p class="ht-sub">Fades become solid ink dots that shrink into the shirt. Solid stays solid. The file comes out 100% or 0% opacity only, so nothing prints pink over the white.</p>
 
   <label>Lines per inch</label>
-  <div class="ht-row"><input id="bth-lpi" type="range" min="8" max="85" step="1" value="25"><span class="ht-val" id="bth-lpiV"></span></div>
+  <div class="ht-row"><input id="bth-lpi" type="range" min="8" max="60" step="1" value="15"><span class="ht-val" id="bth-lpiV"></span></div>
   <div class="ht-hint" id="bth-lpiH">Lower = bigger, further-apart dots.</div>
 
   <label>Dot angle</label>
   <div class="ht-row"><input id="bth-angle" type="range" min="0" max="90" step="0.5" value="22.5"><span class="ht-val" id="bth-angleV"></span></div>
 
   <label>Smallest dot</label>
-  <div class="ht-row"><input id="bth-min" type="range" min="0.1" max="2" step="0.05" value="0.5"><span class="ht-val" id="bth-minV"></span></div>
+  <div class="ht-row"><input id="bth-min" type="range" min="0.2" max="2" step="0.05" value="0.8"><span class="ht-val" id="bth-minV"></span></div>
   <div class="ht-hint">Real size on the print. No dot is smaller than this; fainter areas get fewer of them instead. Too small and the powder will not stick.</div>
 
   <label>Smallest gap</label>
@@ -304,6 +304,12 @@ function bth_shortcode() {
   // Shop limits are found once with the test sheet, so remember them.
   // 0.2.1: the shop test showed 0.4 mm holes plug. Drop a gap saved from the old default once.
   try { if (!localStorage.getItem('bth-v021')) { if (localStorage.getItem('bth-gap') === '0.4') localStorage.removeItem('bth-gap'); localStorage.setItem('bth-v021', '1'); } } catch (e) {}
+  // 0.2.2: the shop settled on 0.8 mm dots, which need ~15 LPI to grow. Drop slider values that are
+  // just the old defaults (0.5 mm, 25 LPI) once, so nobody is left on settings the press test ruled out.
+  try { if (!localStorage.getItem('bth-v022')) {
+    if (localStorage.getItem('bth-min') === '0.5') localStorage.removeItem('bth-min');
+    if (localStorage.getItem('bth-lpi') === '25') localStorage.removeItem('bth-lpi');
+    localStorage.setItem('bth-v022', '1'); } } catch (e) {}
   ['lpi', 'angle', 'min', 'gap', 'solid'].forEach(function (id) {
     try { var v = localStorage.getItem('bth-' + id); if (v !== null) el(id).value = v; } catch (e) {}
   });

@@ -6,7 +6,7 @@ shortcode exists (BT Portal 0.60.0+, same pattern as the Quote tab and BT Quote)
 
 - Site: boomerts.com (AWS Lightsail Bitnami WordPress, NOT IONOS; Boomer T's is a separate company
   from Duck and Rabbit Co.)
-- Current version: **0.2.1**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
+- Current version: **0.2.2**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
 - Repo: `strummer95/bt-halftoner` (must stay **public**: the updater reads `manifest.json` through
   `api.github.com` without a token).
 
@@ -57,6 +57,11 @@ with `edit_posts` (`bth_user_can_use()`).
   ~0.5 mm (0.42 patchy, 0.56 clean); holes under ~0.5 mm plugged (0.42 faint, 0.56 to 0.6 open);
   lines held to 0.3 mm, 0.2 weak. Hence defaults 0.5 / 0.6. A saved `bth-gap` of the old 0.4 default
   is dropped once (`bth-v021`).
+- **0.2.2, Dillon's read of the press test:** at actual size nothing under 0.7 mm is safe and 0.8 mm
+  is a lot better (the 10" sheet's "0.5" column, really 0.70 mm, was OK). Default `minDotMm` 0.8,
+  default LPI 15 (pitch 1.69 mm): at 25 LPI an 0.8 mm dot already covers ~49% of its cell and the
+  0.6 mm gap rule goes solid at ~53%, so there was almost no growing range. At 15 LPI it is ~18% to
+  ~85%. Saved values equal to the old defaults are dropped once (`bth-v022`).
 - **Dot test sheet (0.2.0)**: link under the sliders builds a 600 DPI black PNG of dots, holes and
   lines at 0.2 to 1.5 mm, hard-edged like a real output. It is how the shop finds its two numbers.
 - **Preview downscaling matters.** Shrinking the dot pattern in one `drawImage` step skips pixels and
