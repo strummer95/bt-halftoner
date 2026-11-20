@@ -1,0 +1,10 @@
+{
+  "name": "BT Halftoner",
+  "slug": "bt-halftoner",
+  "version": "0.1.0",
+  "download_url": "https://raw.githubusercontent.com/strummer95/bt-halftoner/main/bt-halftoner-0.1.0.zip",
+  "homepage": "https://boomerts.com",
+  "tested": "6.7",
+  "requires": "5.8",
+  "changelog": "<h4>0.1.0</h4><ul><li><strong>First version.</strong> Drop in a transparent PNG and the faded parts turn into solid ink dots that get smaller and further apart until they disappear into the shirt, like a screen print. Solid parts stay solid.</li><li><strong>Why:</strong> DTF puts white under everything, so a see-through red prints pink. The file you download has no see-through pixels at all, every pixel is full ink or nothing, so the colour stays the real colour.</li><li>The faintest part of a fade does not stop at a line: the dots stop getting smaller and get fewer instead, so it trails off into scattered dots.</li><li>Side-by-side preview on your shirt colour. The left side can show the design as intended or how DTF prints it today (the pink halo).</li><li>Sliders for dot size (lines per inch), angle, the smallest dot worth printing, and how opaque counts as solid. Downloads a 600 DPI PNG by default, same print size. Nothing is uploaded; it all runs on your computer.</li><li>Lives in the employee portal under Other &gt; Halftoner (needs BT Portal 0.60.0).</li></ul>"
+}
