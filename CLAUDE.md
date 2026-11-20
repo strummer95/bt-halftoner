@@ -6,7 +6,7 @@ shortcode exists (BT Portal 0.60.0+, same pattern as the Quote tab and BT Quote)
 
 - Site: boomerts.com (AWS Lightsail Bitnami WordPress, NOT IONOS; Boomer T's is a separate company
   from Duck and Rabbit Co.)
-- Current version: **0.1.1**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
+- Current version: **0.1.2**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
 - Repo: `strummer95/bt-halftoner` (must stay **public**: the updater reads `manifest.json` through
   `api.github.com` without a token).
 
@@ -59,6 +59,9 @@ with `edit_posts` (`bth_user_can_use()`).
   sides at the same print spot: halftoned at 1 file px per screen px, original covering the same area.
   `paint()` keeps the full-res composite on `canvas._full` for it. Stage background is a checkerboard
   so empty space is not read as white ink.
+- **Shirt swatches (0.1.2)** sit above the previews (`SHIRTS` list + `Other…` colour input
+  `#bth-shirt`, remembered in localStorage `bth-shirt`). The sidebar picker was missed entirely.
+  Loupe magnification is at least 3x the pane, else a small file looked like a hole in the preview.
 - **Illustrator gradients to 0% opacity** also interpolate colour toward the 0% stop's colour (white
   by default), so the faint end is light grey ink. That is in the file, not a bug here; the fix is
   the stop colour in Illustrator.

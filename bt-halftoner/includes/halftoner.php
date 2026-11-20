@@ -75,6 +75,12 @@ function bth_shortcode() {
 #bth-halftoner .ht-pane{flex:1;min-width:0}
 #bth-halftoner .ht-pane h3{margin:0 0 4px;font-family:Oswald,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--ht-navy);font-weight:500}
 #bth-halftoner .ht-stage{position:relative;height:calc(100vh - 290px);min-height:320px;overflow:auto;border:1px solid var(--ht-line);border-radius:8px;background:repeating-conic-gradient(#e4e6ee 0 25%,#eef0f5 0 50%) 0 0/16px 16px}
+#bth-halftoner .ht-shirts{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#bth-halftoner .ht-shl{font-family:Oswald,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--ht-navy);margin-right:2px}
+#bth-halftoner .ht-sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--ht-line);cursor:pointer;display:inline-block;vertical-align:middle;margin-right:4px;padding:0}
+#bth-halftoner .ht-sw.on{box-shadow:0 0 0 2px var(--ht-pink)}
+#bth-halftoner .ht-custom{display:inline-flex;align-items:center;gap:4px;margin:0 6px 0 0;font-family:inherit;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ht-mute);cursor:pointer}
+#bth-halftoner .ht-custom input{width:26px;height:26px;border:0;padding:0;background:none;cursor:pointer}
 #bth-halftoner .ht-loupe{position:absolute;width:240px;height:240px;border-radius:50%;border:3px solid var(--ht-pink);box-shadow:0 4px 16px rgba(0,0,0,.35);pointer-events:none;display:none;z-index:5}
 #bth-halftoner .ht-stage canvas{display:block}
 @media (max-width:900px){#bth-halftoner{flex-direction:column}#bth-halftoner .ht-side{width:100%}#bth-halftoner .ht-panes{flex-direction:column}#bth-halftoner .ht-stage{height:60vh}}
@@ -107,8 +113,6 @@ function bth_shortcode() {
   <select id="bth-scale"><option value="1">Same as image</option><option value="2" selected>2× (rounder dots)</option><option value="4">4× (big files)</option></select>
   <div class="ht-hint">Same print size, more pixels per dot.</div>
 
-  <label>Preview shirt color</label>
-  <div class="ht-row"><input id="bth-shirt" type="color" value="#111111" style="width:44px;height:28px;border:0;padding:0;background:none"><span class="ht-hint">Preview only, not in the file.</span></div>
 
   <label>Left preview</label>
   <select id="bth-left"><option value="design">As designed (the goal)</option><option value="dtf">As DTF prints it today (pink)</option></select>
@@ -128,6 +132,7 @@ function bth_shortcode() {
   <div class="ht-drop" id="bth-drop">Drop transparent PNGs here, or click to choose<input id="bth-pick" type="file" accept="image/png,image/webp,image/*" multiple hidden></div>
   <div class="ht-files" id="bth-files"></div>
   <div class="ht-status" id="bth-status"></div>
+  <div class="ht-shirts"><span class="ht-shl">Shirt</span><span id="bth-swatches"></span><label class="ht-custom" title="Any other colour"><input id="bth-shirt" type="color" value="#111111"><span>Other…</span></label><span class="ht-hint">Preview only, not in the file.</span></div>
   <div class="ht-panes">
     <div class="ht-pane"><h3 id="bth-lefth">Original</h3><div class="ht-stage" id="bth-s1"><canvas id="bth-cin"></canvas><canvas class="ht-loupe" id="bth-l1"></canvas></div></div>
     <div class="ht-pane"><h3>Halftoned</h3><div class="ht-stage" id="bth-s2"><canvas id="bth-cout"></canvas><canvas class="ht-loupe" id="bth-l2"></canvas></div></div>
@@ -274,7 +279,24 @@ function bth_shortcode() {
   ['lpi', 'angle', 'min', 'solid', 'dpi', 'scale'].forEach(function (id) {
     el(id).addEventListener('input', function () { labels(); schedule(); });
   });
-  el('shirt').addEventListener('input', paintBoth);
+  var SHIRTS = [['Black', '#111111'], ['White', '#ffffff'], ['Heather grey', '#9a9ca3'], ['Charcoal', '#3d3f45'], ['Navy', '#1b265e'],
+                ['Royal', '#1f4fb3'], ['Red', '#b2141e'], ['Maroon', '#5c1a26'], ['Forest', '#1f4a2c'], ['Orange', '#e8641e'],
+                ['Gold', '#f2b51b'], ['Purple', '#4b2a82'], ['Pink', '#e7a1c0'], ['Sand', '#d8c8a8']];
+  SHIRTS.forEach(function (sw) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'ht-sw'; b.title = sw[0];
+    b.style.background = sw[1]; b.dataset.c = sw[1];
+    b.addEventListener('click', function () { el('shirt').value = sw[1]; shirtChanged(); });
+    el('swatches').appendChild(b);
+  });
+  function shirtChanged() {
+    var v = el('shirt').value.toLowerCase();
+    el('swatches').querySelectorAll('.ht-sw').forEach(function (b) { b.classList.toggle('on', b.dataset.c === v); });
+    try { localStorage.setItem('bth-shirt', v); } catch (e) {}
+    paintBoth();
+  }
+  try { var saved = localStorage.getItem('bth-shirt'); if (saved) el('shirt').value = saved; } catch (e) {}
+  el('shirt').addEventListener('input', shirtChanged);
+  shirtChanged();
   el('zoom').addEventListener('change', paintBoth);
   el('left').addEventListener('change', paintBoth);
   labels();
@@ -318,7 +340,7 @@ function bth_shortcode() {
       var dist = Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(x0 - y, 0, y - x1));
       d[(y * w + x) * 4 + 3] = Math.round(Math.max(0, 1 - dist / fade) * 255);
     }
-    el('shirt').value = '#ffffff';
+    el('shirt').value = '#ffffff'; shirtChanged();
     items.push({ name: 'test-faded-square', w: w, h: h, data: d, dpi: 300 });
     select(items.length - 1);
   });
@@ -426,7 +448,10 @@ function bth_shortcode() {
       var src = el(p[0]), lc = el(p[1]), st = el(p[2]), full = src._full;
       if (!full) return;
       var outFull = el('cout')._full, k = full.width / outFull.width; // in-pane px per out px
-      var span = L * k; // file pixels covered by the loupe on this side
+      // 1 output px per screen px, but never less than 3x what the pane shows
+      // (a small file is already near 1:1 at Fit, so the loupe looked like a hole).
+      var shown = el('cout').getBoundingClientRect().width / outFull.width;
+      var span = Math.min(L, L / (3 * shown)) * k; // file pixels covered on this side
       lc.width = L * dpr; lc.height = L * dpr;
       var g = lc.getContext('2d');
       g.imageSmoothingEnabled = k < 1; // stretch the original smoothly, show dots crisp
