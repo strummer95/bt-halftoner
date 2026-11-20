@@ -102,7 +102,7 @@ function bth_shortcode() {
   <div class="ht-hint">Real size on the print. No dot is smaller than this; fainter areas get fewer of them instead. Too small and the powder will not stick.</div>
 
   <label>Smallest gap</label>
-  <div class="ht-row"><input id="bth-gap" type="range" min="0" max="2" step="0.05" value="0.4"><span class="ht-val" id="bth-gapV"></span></div>
+  <div class="ht-row"><input id="bth-gap" type="range" min="0" max="2" step="0.05" value="0.6"><span class="ht-val" id="bth-gapV"></span></div>
   <div class="ht-hint">Holes between dots smaller than this fill in, so those spots print solid instead.</div>
   <div class="ht-hint" style="margin-top:4px">Not sure? Print the <a href="#" id="bth-sheet">dot test sheet</a> and use the smallest dot and hole that came out clean.</div>
 
@@ -302,6 +302,8 @@ function bth_shortcode() {
     el('solidV').textContent = el('solid').value + '%';
   }
   // Shop limits are found once with the test sheet, so remember them.
+  // 0.2.1: the shop test showed 0.4 mm holes plug. Drop a gap saved from the old default once.
+  try { if (!localStorage.getItem('bth-v021')) { if (localStorage.getItem('bth-gap') === '0.4') localStorage.removeItem('bth-gap'); localStorage.setItem('bth-v021', '1'); } } catch (e) {}
   ['lpi', 'angle', 'min', 'gap', 'solid'].forEach(function (id) {
     try { var v = localStorage.getItem('bth-' + id); if (v !== null) el(id).value = v; } catch (e) {}
   });

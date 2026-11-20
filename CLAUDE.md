@@ -6,7 +6,7 @@ shortcode exists (BT Portal 0.60.0+, same pattern as the Quote tab and BT Quote)
 
 - Site: boomerts.com (AWS Lightsail Bitnami WordPress, NOT IONOS; Boomer T's is a separate company
   from Duck and Rabbit Co.)
-- Current version: **0.2.0**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
+- Current version: **0.2.1**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
 - Repo: `strummer95/bt-halftoner` (must stay **public**: the updater reads `manifest.json` through
   `api.github.com` without a token).
 
@@ -49,10 +49,14 @@ with `edit_posts` (`bth_user_can_use()`).
   first build dropped those cells outright and Dillon saw a hard cut-off ring; do not go back to that.
 - **Limits are physical, in mm (0.2.0)**, because DTF powder will not stick to a dot without enough
   white under it, and a too-narrow hole fills in. Dillon's first real test at 50 LPI with a % minimum
-  printed dots far too small. `minDotMm` (default 0.5) -> `rMin`/`covMin`; `minGapMm` (default 0.4):
+  printed dots far too small. `minDotMm` (default 0.5) -> `rMin`/`covMin`; `minGapMm` (default 0.6):
   the hole between four dots is 2*(sqrt(.5) - r) cells, so above `covGap` a cell prints solid.
   `covFor(r)` is the analytic inverse of `radiusFor()`. Default LPI 25 so 0.5 mm dots have room to
   grow. Slider values (lpi, angle, min, gap, solid) persist in localStorage `bth-<id>`.
+- **Shop test result (0.2.1)**, pressed on white at 100% and at 10" (x1.396): dots broke up below
+  ~0.5 mm (0.42 patchy, 0.56 clean); holes under ~0.5 mm plugged (0.42 faint, 0.56 to 0.6 open);
+  lines held to 0.3 mm, 0.2 weak. Hence defaults 0.5 / 0.6. A saved `bth-gap` of the old 0.4 default
+  is dropped once (`bth-v021`).
 - **Dot test sheet (0.2.0)**: link under the sliders builds a 600 DPI black PNG of dots, holes and
   lines at 0.2 to 1.5 mm, hard-edged like a real output. It is how the shop finds its two numbers.
 - **Preview downscaling matters.** Shrinking the dot pattern in one `drawImage` step skips pixels and
