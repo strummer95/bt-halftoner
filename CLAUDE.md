@@ -6,7 +6,7 @@ shortcode exists (BT Portal 0.60.0+, same pattern as the Quote tab and BT Quote)
 
 - Site: boomerts.com (AWS Lightsail Bitnami WordPress, NOT IONOS; Boomer T's is a separate company
   from Duck and Rabbit Co.)
-- Current version: **0.1.2**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
+- Current version: **0.2.0**. Constant `BTH_VERSION`, prefix `bth_`, element ids `bth-`.
 - Repo: `strummer95/bt-halftoner` (must stay **public**: the updater reads `manifest.json` through
   `api.github.com` without a token).
 
@@ -44,9 +44,17 @@ with `edit_posts` (`bth_user_can_use()`).
   un-premultiplied RGB (decoded with `premultiplyAlpha:'none'`), so a faded red is dots of real red.
 - Dot area is linear in opacity: `radiusFor()` inverts the coverage of a round dot clipped by its
   cell (full cover only at r = sqrt(0.5) of the cell). Alpha is averaged over each cell; at or above
-  "Solid above" (default 97) a pixel prints solid. **Below "Smallest dot kept" dots stop shrinking and
-  thin out instead**: a min-size dot in a fraction a/minDot of cells (repeatable per-cell hash). The
+  "Solid above" (default 97) a pixel prints solid. **Below the smallest dot, dots stop shrinking and
+  thin out instead**: a min-size dot in a fraction a/covMin of cells (repeatable per-cell hash). The
   first build dropped those cells outright and Dillon saw a hard cut-off ring; do not go back to that.
+- **Limits are physical, in mm (0.2.0)**, because DTF powder will not stick to a dot without enough
+  white under it, and a too-narrow hole fills in. Dillon's first real test at 50 LPI with a % minimum
+  printed dots far too small. `minDotMm` (default 0.5) -> `rMin`/`covMin`; `minGapMm` (default 0.4):
+  the hole between four dots is 2*(sqrt(.5) - r) cells, so above `covGap` a cell prints solid.
+  `covFor(r)` is the analytic inverse of `radiusFor()`. Default LPI 25 so 0.5 mm dots have room to
+  grow. Slider values (lpi, angle, min, gap, solid) persist in localStorage `bth-<id>`.
+- **Dot test sheet (0.2.0)**: link under the sliders builds a 600 DPI black PNG of dots, holes and
+  lines at 0.2 to 1.5 mm, hard-edged like a real output. It is how the shop finds its two numbers.
 - **Preview downscaling matters.** Shrinking the dot pattern in one `drawImage` step skips pixels and
   made the dots look harsh with a solid core. `paint()` halves repeatedly so each step averages. Left
   preview modes: As designed (default, the goal) and As DTF prints it today (fade toward white).

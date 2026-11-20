@@ -91,15 +91,20 @@ function bth_shortcode() {
   <p class="ht-sub">Fades become solid ink dots that shrink into the shirt. Solid stays solid. The file comes out 100% or 0% opacity only, so nothing prints pink over the white.</p>
 
   <label>Lines per inch</label>
-  <div class="ht-row"><input id="bth-lpi" type="range" min="15" max="85" step="1" value="45"><span class="ht-val" id="bth-lpiV"></span></div>
-  <div class="ht-hint">Lower = bigger dots. 35 to 55 suits DTF.</div>
+  <div class="ht-row"><input id="bth-lpi" type="range" min="8" max="85" step="1" value="25"><span class="ht-val" id="bth-lpiV"></span></div>
+  <div class="ht-hint" id="bth-lpiH">Lower = bigger, further-apart dots.</div>
 
   <label>Dot angle</label>
   <div class="ht-row"><input id="bth-angle" type="range" min="0" max="90" step="0.5" value="22.5"><span class="ht-val" id="bth-angleV"></span></div>
 
-  <label>Smallest dot kept</label>
-  <div class="ht-row"><input id="bth-min" type="range" min="0" max="30" step="1" value="8"><span class="ht-val" id="bth-minV"></span></div>
-  <div class="ht-hint">Dots never get smaller than this; fainter areas get fewer of them instead. Raise it if tiny dots flake off.</div>
+  <label>Smallest dot</label>
+  <div class="ht-row"><input id="bth-min" type="range" min="0.1" max="2" step="0.05" value="0.5"><span class="ht-val" id="bth-minV"></span></div>
+  <div class="ht-hint">Real size on the print. No dot is smaller than this; fainter areas get fewer of them instead. Too small and the powder will not stick.</div>
+
+  <label>Smallest gap</label>
+  <div class="ht-row"><input id="bth-gap" type="range" min="0" max="2" step="0.05" value="0.4"><span class="ht-val" id="bth-gapV"></span></div>
+  <div class="ht-hint">Holes between dots smaller than this fill in, so those spots print solid instead.</div>
+  <div class="ht-hint" style="margin-top:4px">Not sure? Print the <a href="#" id="bth-sheet">dot test sheet</a> and use the smallest dot and hole that came out clean.</div>
 
   <label>Solid above</label>
   <div class="ht-row"><input id="bth-solid" type="range" min="70" max="100" step="1" value="97"><span class="ht-val" id="bth-solidV"></span></div>
@@ -173,6 +178,14 @@ function bth_shortcode() {
       h = Math.imul(h ^ (h >>> 13), 1274126177);
       return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
     }
+    // ink fraction of a cell covered by a centred dot of radius r (cell units)
+    function covFor(r) {
+      if (r <= 0) return 0;
+      if (r <= 0.5) return Math.PI * r * r;
+      if (r >= Math.SQRT1_2) return 1;
+      var seg = r * r * Math.acos(0.5 / r) - 0.5 * Math.sqrt(r * r - 0.25);
+      return Math.PI * r * r - 4 * seg;
+    }
     function radiusFor(c) { return LUT[Math.round(Math.min(1, Math.max(0, c)) * 1024)]; }
 
     function halftone(src, w, h, s) {
@@ -190,6 +203,13 @@ function bth_shortcode() {
         var a = src[(y0 * w + x0) * 4 + 3], b = src[(y0 * w + x1) * 4 + 3], c = src[(y1 * w + x0) * 4 + 3], d = src[(y1 * w + x1) * 4 + 3];
         return ((a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy) / 255;
       }
+      // Real-size limits, in cell units. DTF powder needs enough white under a
+      // dot to grab, and a hole too narrow fills in, so both are set in mm.
+      var pxPerMm = s.dpi * k / 25.4;
+      var rMin = Math.min(R_MAX, (s.minDotMm * pxPerMm / 2) / cell), covMin = covFor(rMin);
+      // the hole between four dots has diameter 2*(sqrt(.5) - r) cells
+      var rGap = Math.SQRT1_2 - (s.minGapMm * pxPerMm / 2) / cell;
+      var covGap = rGap <= rMin ? covMin : covFor(rGap);
       var cache = new Map();
       function cellInfo(i, j) {
         var key = i * 100003 + j, v = cache.get(key);
@@ -199,13 +219,14 @@ function bth_shortcode() {
         // average over the cell so dots follow the fade, not single noisy pixels
         var a = (A(cx, cy) * 2 + A(cx - q, cy - q) + A(cx + q, cy - q) + A(cx - q, cy + q) + A(cx + q, cy + q)) / 6;
         var r = -1;
-        if (a >= s.minDot) r = radiusFor(a) * cell;
-        else if (a > 0.004 && s.minDot > 0) {
+        if (a >= covGap && covGap < 1) r = R_MAX * cell;      // holes would plug: print solid
+        else if (a >= covMin) r = radiusFor(a) * cell;
+        else if (a > 0.004 && covMin > 0) {
           // Below the smallest printable dot, dots stop shrinking and start
-          // thinning out: keep a minimum-size dot in a fraction a/minDot of
+          // thinning out: keep a minimum-size dot in a fraction a/covMin of
           // cells, so the ink area still matches the opacity and the fade
           // trails off into scattered dots instead of stopping at a line.
-          if (hash(i, j) < a / s.minDot) r = radiusFor(s.minDot) * cell;
+          if (hash(i, j) < a / covMin) r = rMin * cell;
         }
         v = [cx, cy, r];
         cache.set(key, v);
@@ -266,18 +287,29 @@ function bth_shortcode() {
   /* ---------- state + settings ---------- */
   var items = [], cur = -1, busyLabel = '', timer = null, runSeq = 0;
   function S() {
-    return { lpi: +el('lpi').value, angle: +el('angle').value, minDot: +el('min').value / 100,
+    return { lpi: +el('lpi').value, angle: +el('angle').value, minDotMm: +el('min').value, minGapMm: +el('gap').value,
              solid: +el('solid').value / 100, dpi: +el('dpi').value || 300, scale: +el('scale').value };
   }
   function status(t) { el('status').textContent = t; }
   function labels() {
     el('lpiV').textContent = el('lpi').value;
     el('angleV').textContent = el('angle').value + '°';
-    el('minV').textContent = el('min').value + '%';
+    el('minV').textContent = (+el('min').value).toFixed(2) + ' mm';
+    el('gapV').textContent = (+el('gap').value).toFixed(2) + ' mm';
+    var pitch = 25.4 / +el('lpi').value;
+    el('lpiH').textContent = 'Dots ' + pitch.toFixed(2) + ' mm apart. Lower = bigger, further-apart dots.' +
+      (+el('min').value > pitch * 0.9 ? ' Smallest dot is about as big as the spacing, so dots cannot grow: lower this.' : '');
     el('solidV').textContent = el('solid').value + '%';
   }
-  ['lpi', 'angle', 'min', 'solid', 'dpi', 'scale'].forEach(function (id) {
-    el(id).addEventListener('input', function () { labels(); schedule(); });
+  // Shop limits are found once with the test sheet, so remember them.
+  ['lpi', 'angle', 'min', 'gap', 'solid'].forEach(function (id) {
+    try { var v = localStorage.getItem('bth-' + id); if (v !== null) el(id).value = v; } catch (e) {}
+  });
+  ['lpi', 'angle', 'min', 'gap', 'solid', 'dpi', 'scale'].forEach(function (id) {
+    el(id).addEventListener('input', function () {
+      try { if (id !== 'dpi' && id !== 'scale') localStorage.setItem('bth-' + id, el(id).value); } catch (e) {}
+      labels(); schedule();
+    });
   });
   var SHIRTS = [['Black', '#111111'], ['White', '#ffffff'], ['Heather grey', '#9a9ca3'], ['Charcoal', '#3d3f45'], ['Navy', '#1b265e'],
                 ['Royal', '#1f4fb3'], ['Red', '#b2141e'], ['Maroon', '#5c1a26'], ['Forest', '#1f4a2c'], ['Orange', '#e8641e'],
@@ -334,6 +366,49 @@ function bth_shortcode() {
     }
     if (added) select(items.length - 1);
   }
+  /* ---------- dot test sheet: print it, see what holds ---------- */
+  // 600 DPI, black only, every pixel 0 or 255 like a real output. Rows of
+  // isolated dots, holes in solid, and thin lines, each labelled in mm.
+  el('sheet').addEventListener('click', async function (e) {
+    e.preventDefault();
+    var DPI = 600, mm = DPI / 25.4, sizes = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0, 1.2, 1.5];
+    var col = 17 * mm, W = Math.round(12 * mm + sizes.length * col), H = Math.round(108 * mm);
+    var c = document.createElement('canvas'); c.width = W; c.height = H;
+    var g = c.getContext('2d'); g.fillStyle = '#000';
+    g.font = 'bold ' + Math.round(3.2 * mm) + 'px Arial, sans-serif';
+    g.fillText('BT Halftoner dot test. Print at 100%. Use the smallest dot, hole and line that came out clean.', 4 * mm, 7 * mm);
+    g.font = 'bold ' + Math.round(2.6 * mm) + 'px Arial, sans-serif';
+    function rowLabel(t, y) { g.save(); g.translate(4 * mm, y); g.rotate(-Math.PI / 2); g.fillText(t, 0, 2 * mm); g.restore(); }
+    var top = 12 * mm, ph = 22 * mm, pw = 14 * mm;
+    sizes.forEach(function (d, i) {
+      var x0 = 12 * mm + i * col, rpx = d * mm / 2, pitch = Math.max(d * 2.5, 1) * mm;
+      // 1: dots
+      for (var y = top + rpx; y < top + ph - rpx; y += pitch) for (var x = x0 + rpx; x < x0 + pw - rpx; x += pitch) { g.beginPath(); g.arc(x, y, rpx, 0, 7); g.fill(); }
+      // 2: holes in solid
+      var t2 = top + ph + 8 * mm;
+      g.fillRect(x0, t2, pw, ph);
+      g.globalCompositeOperation = 'destination-out';
+      for (y = t2 + pitch / 2; y < t2 + ph - rpx; y += pitch) for (x = x0 + pitch / 2; x < x0 + pw - rpx; x += pitch) { g.beginPath(); g.arc(x, y, rpx, 0, 7); g.fill(); }
+      g.globalCompositeOperation = 'source-over';
+      // 3: lines
+      var t3 = t2 + ph + 8 * mm;
+      for (x = x0; x + d * mm <= x0 + pw; x += Math.max(d * 3, 1.5) * mm) g.fillRect(x, t3, d * mm, ph);
+      g.fillText(d.toFixed(1) + ' mm', x0, t3 + ph + 5 * mm);
+    });
+    rowLabel('DOTS', top + ph); rowLabel('HOLES', top + 2 * ph + 8 * mm); rowLabel('LINES', top + 3 * ph + 16 * mm);
+    // hard edges only, same as a real output
+    var img = g.getImageData(0, 0, W, H), d = img.data;
+    for (var p = 3; p < d.length; p += 4) { var on = d[p] >= 128; d[p - 3] = d[p - 2] = d[p - 1] = 0; d[p] = on ? 255 : 0; }
+    g.putImageData(img, 0, 0);
+    var blob = await new Promise(function (r) { c.toBlob(r, 'image/png'); });
+    var bytes = setPngDpi(new Uint8Array(await blob.arrayBuffer()), DPI);
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+    a.download = 'dtf-dot-test-sheet.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+  });
+
   el('test').addEventListener('click', function () {
     var w = 1500, h = 1500, d = new Uint8ClampedArray(w * h * 4), x0 = 450, x1 = 1050, fade = 380;
     for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
@@ -388,6 +463,7 @@ function bth_shortcode() {
   }
   function report(it, s, ms) {
     var t = (it.w / s.dpi).toFixed(2) + '″ × ' + (it.h / s.dpi).toFixed(2) + '″ · output ' + it.out.w + '×' + it.out.h + 'px @ ' + (s.dpi * s.scale) + ' DPI';
+    t += ' · dots ' + s.minDotMm.toFixed(2) + ' mm and up, gaps ' + s.minGapMm.toFixed(2) + ' mm and up';
     if (ms) t += ' · ' + (ms / 1000).toFixed(1) + 's';
     if (it.noAlpha) t += ' · This image has no transparency, so there is nothing to dot. Use a transparent PNG.';
     status(t);
